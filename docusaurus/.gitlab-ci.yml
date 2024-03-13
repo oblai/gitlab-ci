@@ -1,0 +1,62 @@
+variables:
+    GIT_STRATEGY: none
+
+stages:
+    - environment
+    - deploy
+
+# DOCKER CONTAINER SECTION
+.job_definition: &docusaurus_build
+  stage: environment
+  script:
+    - docker exec -t ${CONTAINERNAME} bash -c "rm -rf /docusaurus/MyWebsite"
+    - docker ps -a -q --filter "name=${CONTAINERNAME}" | grep -q . && docker rm -f ${CONTAINERNAME} || true
+    - |
+        docker run \
+          --restart=always \
+          --name="${CONTAINERNAME}" \
+          -p 80:80 \
+          -v /srv/docusaurus:/docusaurus \
+          -v /home/node:/home/node \
+          -e TARGET_UID=1000 \
+          -e TARGET_GID=1000 \
+          -e AUTO_UPDATE=true \
+          -e RUN_MODE=production \
+          -d awesometic/docusaurus
+    - |
+    - docker exec -t ${CONTAINERNAME} bash -c "apk add git"
+    - docker exec -t ${CONTAINERNAME} bash -c "apk add shadow"
+    - docker exec -t ${CONTAINERNAME} bash -c "apk add openssh"
+    - docker exec -t ${CONTAINERNAME} bash -c "usermod -s /bin/bash node && sleep 90"
+    - docker exec -t ${CONTAINERNAME} bash -c "chown -R node:node /docusaurus"
+
+environment:
+  <<: *docusaurus_build
+  variables:
+    CONTAINERNAME: 'doc'
+  only:
+    - master
+  tags:
+    - pmo
+  when: always
+
+
+# UPDATE REPOSITORY SECTION
+.job_definition: &deploy         
+  script:
+    - docker exec -t -u node ${CONTAINERNAME} bash -c "cd /docusaurus && git config pull.rebase false"
+    - docker exec -t -u node ${CONTAINERNAME} bash -c "cd /docusaurus && git reset --hard HEAD"
+    - docker exec -t -u node ${CONTAINERNAME} bash -c "cd /docusaurus && git pull origin master"
+
+deploy:
+    stage: deploy
+    <<: *deploy
+    variables:
+        CONTAINERNAME: 'doc'
+        DOCROOT: '/docusaurus'
+    tags:
+        - pmo
+    only:
+        - master
+    when: always
+    allow_failure: true
