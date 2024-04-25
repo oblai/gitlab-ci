@@ -13,7 +13,7 @@ stages:
     - docker ps -a -q --filter "name=${CONTAINERNAME}" | grep -q . && docker rm -f ${CONTAINERNAME} || true
     - |
         docker run \
-          --restart=always \
+          --restart=unless-stoped \
           --name="${CONTAINERNAME}" \
           -p 80:80 \
           -v /srv/docusaurus:/docusaurus \
