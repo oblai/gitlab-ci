@@ -1,0 +1,34 @@
+variables:
+  CONTAINERNAME: site
+
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  script:
+    - cp app/Dockerfile ./
+    - cp app/id_rsa ./
+    - docker build -t ${CONTAINERNAME} .
+  only:
+    - main
+  tags:
+    - shell
+  when: always
+
+deploy:
+  stage: deploy
+  script:
+    - docker ps -a -q --filter "name=${CONTAINERNAME}" | grep -q . && docker rm -f ${CONTAINERNAME} || true
+    - |
+        docker run \
+          --restart=unless-stopped \
+          --name="${CONTAINERNAME}" \
+          -p 3000:3000 \
+          -d ${CONTAINERNAME}
+  only:
+    - main
+  tags:
+    - shell
+  when: always
