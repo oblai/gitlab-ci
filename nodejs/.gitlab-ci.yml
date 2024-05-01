@@ -1,12 +1,12 @@
-variables:
-  CONTAINERNAME: site
-
 stages:
   - build
   - deploy
+  - nginx
 
 build:
   stage: build
+  variables:
+    CONTAINERNAME: 'site'
   script:
     - cp app/Dockerfile ./
     - cp app/id_rsa ./
@@ -19,14 +19,36 @@ build:
 
 deploy:
   stage: deploy
+  variables:
+    CONTAINERNAME: 'site'
   script:
     - docker ps -a -q --filter "name=${CONTAINERNAME}" | grep -q . && docker rm -f ${CONTAINERNAME} || true
     - |
-        docker run \
-          --restart=unless-stopped \
+        docker run -d \
           --name="${CONTAINERNAME}" \
-          -p 3000:3000 \
-          -d ${CONTAINERNAME}
+          --restart=unless-stopped \
+          -p 127.0.0.1:3000:3000 \
+          ${CONTAINERNAME}
+  only:
+    - main
+  tags:
+    - shell
+  when: always
+
+nginx:
+  stage: nginx
+  variables:
+    CONTAINERNAME: 'nginx'
+  script:
+    - docker ps -a -q --filter "name=${CONTAINERNAME}" | grep -q . && docker rm -f ${CONTAINERNAME} || true
+    - |
+        docker run -d \
+          --name ${CONTAINERNAME} \
+          --restart=unless-stopped \
+          --net=host \
+          -v $(pwd)/nginx/conf.d:/etc/nginx/conf.d \
+          -v $(pwd)/nginx/ssl:/etc/nginx/ssl \
+          nginx
   only:
     - main
   tags:
