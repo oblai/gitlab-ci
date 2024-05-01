@@ -1,0 +1,35 @@
+stages:
+  - vpn
+
+vpn:
+  stage: vpn
+  variables:
+    CONTAINERNAME: 'vpn'
+  script:
+    - docker ps -a -q --filter "name=${CONTAINERNAME}" | grep -q . && docker rm -f ${CONTAINERNAME} || true
+    - |
+        docker run -d \
+          --name=${CONTAINERNAME} \
+          --restart unless-stopped \
+          --cap-add=NET_ADMIN \
+          --cap-add=SYS_MODULE \
+          -e PUID=999 \
+          -e PGID=996 \
+          -e TZ=Etc/UTC \
+          -e SERVERURL=auto \
+          -e SERVERPORT=51820 \
+          -e PEERS=2 \
+          -e PEERDNS=auto \
+          -e INTERNAL_SUBNET=10.13.13.0 \
+          -e ALLOWEDIPS=0.0.0.0/0 \
+          -e LOG_CONFS=true \
+          -v /srv/config:/config \
+          -v /lib/modules:/lib/modules \
+          -p 51820:51820/udp \
+          --sysctl="net.ipv4.conf.all.src_valid_mark=1" \
+          linuxserver/wireguard
+  only:
+    - main
+  tags:
+    - shell
+  when: manual
