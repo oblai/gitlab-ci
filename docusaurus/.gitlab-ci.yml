@@ -1,6 +1,3 @@
-variables:
-    GIT_STRATEGY: none
-
 stages:
     - infrastructure
     - deploy
@@ -37,7 +34,7 @@ infrastructure:
   only:
     - master
   tags:
-    - pmo
+    - shell
   when: always
 
 
@@ -55,7 +52,7 @@ deploy:
         CONTAINERNAME: 'doc'
         DOCROOT: '/docusaurus'
     tags:
-        - pmo
+        - shell
     only:
         - master
     when: always
