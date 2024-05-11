@@ -10,7 +10,7 @@ build:
   script:
     - cp app/Dockerfile ./
     - cp app/id_rsa ./
-    - docker build -t ${CONTAINERNAME} .
+    - docker build --no-cache -t ${CONTAINERNAME} .
   only:
     - main
   tags:
@@ -33,7 +33,7 @@ deploy:
     - main
   tags:
     - shell
-  when: always
+  when: on_success
 
 nginx:
   stage: nginx
@@ -50,7 +50,8 @@ nginx:
           -v $(pwd)/nginx/ssl:/etc/nginx/ssl \
           nginx
   only:
-    - main
+    changes:
+      - nginx/*
   tags:
     - shell
   when: always
